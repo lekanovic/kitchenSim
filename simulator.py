@@ -2,6 +2,7 @@
 
 from fridge import ThermalItem
 from rand import RandomEvent
+from nest import Nest
 import time
 import ntplib
 import socket
@@ -18,6 +19,23 @@ class Simulator:
 
         self.splunkUrl = "192.168.0.10"
         self.splunkPort = 6666
+        u = ""
+        p = ""
+        self.nest = Nest(u, p, serial=None, index=0, units="C")
+        self.nest.login()
+
+    def sendNestData(self):
+        self.nest.get_status()
+
+        humid = self.nest.status["device"][self.nest.serial]["current_humidity"]
+        temp =  self.nest.status["shared"][self.nest.serial]["current_temperature"]
+
+        data = "{\"timestamp\":\"%s\"," % self.getTime()
+        data +=  "\"id\":\"%s\"," % ("StoreMart")
+        data += "\"temperature\":\"%s\"," % (temp)
+        data += "\"humidity\":\"%s\"}" % (humid)
+        print data
+
 
     def getTime(self):
         while(1):
@@ -28,7 +46,9 @@ class Simulator:
             except:
                 pass
 
-    def sendToSplunk(self, thermalItems):
+    def sendToSplunk(self):
+            # Get data from Nest and send to splunk
+            self.sendNestData()
 
             for i in self.thermalItems:
                 data = "{\"timestamp\":\"%s\"," % self.getTime()
@@ -40,36 +60,47 @@ class Simulator:
                     data += "\"doorstatus\":\"CLOSED\"}"
                 print data
 
-                client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                client_socket.connect((self.splunkUrl, self.splunkPort))
-                client_socket.send(data)
-                client_socket.close()
+                #client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                #client_socket.connect((self.splunkUrl, self.splunkPort))
+                #client_socket.send(data)
+                #client_socket.close()
 
+                # If the item is doorless simulate temp fluctuation
+                if not i.hasItemDoor():
+                    t = i.getInitTemp()
+                    f = self.randEvent.fluctuation(t)
+                    i.setTemp(f)
                 i.tick()
 
     def simulate(self):
         while(1):
+            # Pick one random thermalitem
+            index = self.randEvent.pickRandomItem(len(self.thermalItems))
+            thermalItem = self.thermalItems[index]
+            # Did the door open
             if self.randEvent.openDoor():
                 howLong = self.randEvent.howLong()
-                index = self.randEvent.pickRandomItem(len(self.thermalItems))
-                self.thermalItems[index].openDoor(howLong)
+                if thermalItem.hasItemDoor():
+                    thermalItem.openDoor(howLong)
 
-            self.sendToSplunk(self.thermalItems)
+            self.sendToSplunk()
 
-            time.sleep(1)
+            #time.sleep(1)
 
 
 def main():
     items = []
-    items.append(ThermalItem("Fridge1", 8))
-    items.append(ThermalItem("Fridge2", 6))
-    items.append(ThermalItem("Freezer1", -20))
-    items.append(ThermalItem("Freezer2", -30))
-    items.append(ThermalItem("Oven1", 250))
-    items.append(ThermalItem("Oven2", 300))
+    items.append(ThermalItem("IceCream", -20))
+    items.append(ThermalItem("Pizza", -30))
+    items.append(ThermalItem("Vegetables", -20))
+    items.append(ThermalItem("MilkandEggs", 4, hasDoor=False))
+    items.append(ThermalItem("Cheese", 8, hasDoor=False))
+    items.append(ThermalItem("Beer", 4))
+    items.append(ThermalItem("Soda", 4))
+    items.append(ThermalItem("HotWok", 300))
 
     s = Simulator(items, roomTemp=20)
     s.simulate()
 
-if __name__=="__main__":
+if __name__ == "__main__":
     main()

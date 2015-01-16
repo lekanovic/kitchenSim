@@ -2,13 +2,17 @@
 
 
 class ThermalItem:
-    def __init__(self, name, temp, roomTemp=20, coolingConstant=-0.07):
+    def __init__(self, name, temp, roomTemp=20, coolingConstant=-0.07, hasDoor=True):
         self.name = name
         self.initTemp = self.temperature = temp
         self.doorOpen = False
         self.roomTemp = roomTemp
         self.k = coolingConstant
         self.time = 0
+        self.hasDoor = hasDoor
+
+    def getInitTemp(self):
+        return self.initTemp
 
     def getName(self):
         return self.name
@@ -19,7 +23,12 @@ class ThermalItem:
     def setTemp(self, temp):
         self.temperature = temp
 
+    def hasItemDoor(self):
+        return self.hasDoor
+
     def isDoorOpen(self):
+        if not self.hasDoor:
+            return True
         if self.time > 0:
             return True
         return self.doorOpen
@@ -32,6 +41,10 @@ class ThermalItem:
         self.doorOpen = False
 
     def tick(self):
+        # If the Item has no door return
+        if not self.hasDoor:
+            return
+
         if self.time > 0:
             self.time = self.time - 1
             self.temperature += (self.k * (self.temperature - self.roomTemp))
@@ -50,7 +63,7 @@ class ThermalItem:
 #coolingConstant = -0.07
 '''
 f1 = ThermalItem("Fridge1", 8)
-f2 = ThermalItem("Freezer1", -20)
+f2 = ThermalItem("Freezer1", -20,hasDoor=False)
 f3 = ThermalItem("Oven1", 250)
 
 f1.openDoor()

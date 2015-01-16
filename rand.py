@@ -20,11 +20,14 @@ class RandomEvent:
         # Sometimes the door is forgotten to be closed
         # Then have it open random from 1h to 10h
         if rand <= self.forgett_close_door:
-            return random.randrange(60*60, 60*60*10)
+            return random.randrange(60 * 60, 60 * 60 * 10)
         else:
             return random.randrange(3, 10)
 
     def pickRandomItem(self, totalItems):
         return random.randrange(0, totalItems)
+
+    def fluctuation(self, v):
+        return random.randrange(v - 1, v + 2)
 
 r = RandomEvent()
