@@ -7,6 +7,7 @@ import ntplib
 import socket
 from time import ctime
 
+
 class Simulator:
 
     def __init__(self, items, roomTemp=20):
@@ -15,14 +16,22 @@ class Simulator:
         self.randEvent = RandomEvent()
         self.ntpClient = ntplib.NTPClient()
 
-        self.splunkUrl = "10.97.0.104"
+        self.splunkUrl = "192.168.0.10"
         self.splunkPort = 6666
 
+    def getTime(self):
+        while(1):
+            try:
+                ntpClient = ntplib.NTPClient()
+                response = ntpClient.request('3.us.pool.ntp.org')
+                return ctime(response.tx_time)
+            except:
+                pass
+
     def sendToSplunk(self, thermalItems):
-            response = self.ntpClient.request('3.us.pool.ntp.org')
 
             for i in self.thermalItems:
-                data = "{\"timestamp\":\"%s\"," % ctime(response.tx_time)
+                data = "{\"timestamp\":\"%s\"," % self.getTime()
                 data += "\"Item\":\"%s\"," % (i.getName())
                 data += "\"Temperature\":\"%s\"," % (i.getTemp())
                 data += "\"isDoorOpen\":\"%s\"}" % (i.isDoorOpen())
@@ -45,6 +54,7 @@ class Simulator:
             self.sendToSplunk(self.thermalItems)
 
             time.sleep(1)
+
 
 def main():
     items = []
