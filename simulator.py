@@ -11,31 +11,33 @@ from time import ctime
 
 class Simulator:
 
-    def __init__(self, items, roomTemp=20):
-        self.roomTemp = roomTemp
+    def __init__(self, items):
         self.thermalItems = items
         self.randEvent = RandomEvent()
         self.ntpClient = ntplib.NTPClient()
 
         self.splunkUrl = "192.168.0.10"
         self.splunkPort = 6666
+
         u = ""
         p = ""
         self.nest = Nest(u, p, serial=None, index=0, units="C")
         self.nest.login()
+        self.nest.get_status()
+        self.roomTemp = self.nest.get_curtemp()
 
     def sendNestData(self):
         self.nest.get_status()
 
-        humid = self.nest.status["device"][self.nest.serial]["current_humidity"]
-        temp =  self.nest.status["shared"][self.nest.serial]["current_temperature"]
+        humid = self.nest.get_curhumid()
+        temp =  self.nest.get_curtemp()
 
         data = "{\"timestamp\":\"%s\"," % self.getTime()
-        data +=  "\"id\":\"%s\"," % ("StoreMart")
+        data += "\"id\":\"%s\"," % ("StoreMart")
         data += "\"temperature\":\"%s\"," % (temp)
         data += "\"humidity\":\"%s\"}" % (humid)
-        print data
 
+        self.sendTCP(data)
 
     def getTime(self):
         while(1):
@@ -46,31 +48,35 @@ class Simulator:
             except:
                 pass
 
+    def sendTCP(self, data):
+        print data
+        return
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect((self.splunkUrl, self.splunkPort))
+        client_socket.send(data)
+        client_socket.close()
+
     def sendToSplunk(self):
-            # Get data from Nest and send to splunk
-            self.sendNestData()
+        # Get data from Nest and send to splunk
+        self.sendNestData()
 
-            for i in self.thermalItems:
-                data = "{\"timestamp\":\"%s\"," % self.getTime()
-                data += "\"id\":\"%s\"," % (i.getName())
-                data += "\"temperature\":\"%s\"," % (i.getTemp())
-                if i.isDoorOpen():
-                    data += "\"doorstatus\":\"OPENED\"}"
-                else:
-                    data += "\"doorstatus\":\"CLOSED\"}"
-                print data
+        for i in self.thermalItems:
+            data = "{\"timestamp\":\"%s\"," % self.getTime()
+            data += "\"id\":\"%s\"," % (i.getName())
+            data += "\"temperature\":\"%s\"," % (i.getTemp())
+            if i.isDoorOpen():
+                data += "\"doorstatus\":\"OPENED\"}"
+            else:
+                data += "\"doorstatus\":\"CLOSED\"}"
 
-                #client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                #client_socket.connect((self.splunkUrl, self.splunkPort))
-                #client_socket.send(data)
-                #client_socket.close()
+            self.sendTCP(data)
 
-                # If the item is doorless simulate temp fluctuation
-                if not i.hasItemDoor():
-                    t = i.getInitTemp()
-                    f = self.randEvent.fluctuation(t)
-                    i.setTemp(f)
-                i.tick()
+            # If the item is doorless simulate temp fluctuation
+            if not i.hasItemDoor():
+                t = i.getInitTemp()
+                f = self.randEvent.fluctuation(t)
+                i.setTemp(f)
+            i.tick()
 
     def simulate(self):
         while(1):
@@ -99,7 +105,7 @@ def main():
     items.append(ThermalItem("Soda", 4))
     items.append(ThermalItem("HotWok", 300))
 
-    s = Simulator(items, roomTemp=20)
+    s = Simulator(items)
     s.simulate()
 
 if __name__ == "__main__":
