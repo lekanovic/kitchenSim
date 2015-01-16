@@ -32,9 +32,12 @@ class Simulator:
 
             for i in self.thermalItems:
                 data = "{\"timestamp\":\"%s\"," % self.getTime()
-                data += "\"Item\":\"%s\"," % (i.getName())
-                data += "\"Temperature\":\"%s\"," % (i.getTemp())
-                data += "\"isDoorOpen\":\"%s\"}" % (i.isDoorOpen())
+                data += "\"id\":\"%s\"," % (i.getName())
+                data += "\"temperature\":\"%s\"," % (i.getTemp())
+                if i.isDoorOpen():
+                    data += "\"doorstatus\":\"OPENED\"}"
+                else:
+                    data += "\"doorstatus\":\"CLOSED\"}"
                 print data
 
                 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
