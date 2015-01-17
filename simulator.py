@@ -16,7 +16,7 @@ class Simulator:
         self.randEvent = RandomEvent()
         self.ntpClient = ntplib.NTPClient()
 
-        self.splunkUrl = "192.168.0.10"
+        self.splunkUrl = "10.97.0.104"
         self.splunkPort = 6666
 
         u = ""
@@ -26,11 +26,14 @@ class Simulator:
         self.nest.get_status()
         self.roomTemp = self.nest.get_curtemp()
 
+        for item in items:
+            item.setRoomTemp(self.roomTemp)
+
     def sendNestData(self):
         self.nest.get_status()
 
         humid = self.nest.get_curhumid()
-        temp =  self.nest.get_curtemp()
+        temp = self.nest.get_curtemp()
 
         data = "{\"timestamp\":\"%s\"," % self.getTime()
         data += "\"id\":\"%s\"," % ("StoreMart")
@@ -48,6 +51,19 @@ class Simulator:
             except:
                 pass
 
+    def sendOpenDoorEvent(self, item):
+        data = "{\"timestamp\":\"%s\"," % self.getTime()
+        data += "\"id\":\"%s\"," % (item.getName())
+        data += "\"doorevent\":\"OPENED\"}"
+        self.sendTCP(data)
+
+    def sendCloseDoorEvent(self, item):
+        data = "{\"timestamp\":\"%s\"," % self.getTime()
+        data += "\"id\":\"%s\"," % (item.getName())
+        data += "\"doorevent\":\"CLOSED\","
+        data += "\"openlength\":\"%s\"}" % (item.howLongHasdoorBeenOpen())
+        self.sendTCP(data)
+
     def sendTCP(self, data):
         print data
         return
@@ -61,11 +77,13 @@ class Simulator:
         self.sendNestData()
 
         for i in self.thermalItems:
+            status = False
             data = "{\"timestamp\":\"%s\"," % self.getTime()
             data += "\"id\":\"%s\"," % (i.getName())
             data += "\"temperature\":\"%s\"," % (i.getTemp())
             if i.isDoorOpen():
                 data += "\"doorstatus\":\"OPENED\"}"
+                status = True
             else:
                 data += "\"doorstatus\":\"CLOSED\"}"
 
@@ -77,6 +95,9 @@ class Simulator:
                 f = self.randEvent.fluctuation(t)
                 i.setTemp(f)
             i.tick()
+            if status and not i.isDoorOpen():
+                status = False
+                self.sendCloseDoorEvent(i)
 
     def simulate(self):
         while(1):
@@ -87,6 +108,7 @@ class Simulator:
             if self.randEvent.openDoor():
                 howLong = self.randEvent.howLong()
                 if thermalItem.hasItemDoor():
+                    self.sendOpenDoorEvent(thermalItem)
                     thermalItem.openDoor(howLong)
 
             self.sendToSplunk()

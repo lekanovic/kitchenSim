@@ -1,6 +1,40 @@
 # -*- coding: utf-8 -*-
 
 
+class Stove:
+
+    def __init__(self, name, roomTemp=20):
+        self.name = name
+        self.maxTemp = 350
+        self.isOn = False
+        self.temperature = 15
+        self.k = -0.07
+        self.roomTemp = roomTemp
+
+    def setTemp(self, temp):
+        self.temperature = temp
+
+    def getName(self):
+        return self.name
+
+    def getTemp(self):
+        return self.temperature
+
+    def turnOn(self):
+        self.isOn = True
+
+    def turnOff(self):
+        self.isOn = False
+
+    def tick(self):
+        if self.isOn and self.temperature <= self.maxTemp:
+            self.temperature += self.temperature * 0.16
+            if self.temperature > self.maxTemp:
+                self.temperature = self.maxTemp
+        elif not self.isOn and self.temperature >= self.roomTemp:
+            self.temperature += (self.k * (self.temperature - self.roomTemp))
+
+
 class ThermalItem:
     def __init__(self, name, temp, roomTemp=20, coolingConstant=-0.07, hasDoor=True):
         self.name = name
@@ -10,6 +44,8 @@ class ThermalItem:
         self.k = coolingConstant
         self.time = 0
         self.hasDoor = hasDoor
+        self.timeDoorIsOpen = 0
+        self.closeEvent = False
 
     def getInitTemp(self):
         return self.initTemp
@@ -23,6 +59,9 @@ class ThermalItem:
     def setTemp(self, temp):
         self.temperature = temp
 
+    def setRoomTemp(self, temp):
+        self.temperature = temp
+
     def hasItemDoor(self):
         return self.hasDoor
 
@@ -34,11 +73,16 @@ class ThermalItem:
         return self.doorOpen
 
     def openDoor(self, sec=4):
+        if self.doorOpen:
+            return
         self.doorOpen = True
-        self.time = sec
+        self.time = self.timeDoorIsOpen = sec
 
     def closeDoor(self):
         self.doorOpen = False
+
+    def howLongHasdoorBeenOpen(self):
+        return self.timeDoorIsOpen
 
     def tick(self):
         # If the Item has no door return
@@ -76,5 +120,28 @@ for i in range(1,15):
     f1.tick()
     f2.tick()
     f3.tick()
-'''
 
+
+f1 = Stove("HotWook")
+print "Turn on"
+f1.turnOn()
+
+for i in range(1,25):
+    print f1.getTemp()
+    f1.tick()
+
+print "Turn off"
+f1.turnOff()
+
+for i in range(1,25):
+    print f1.getTemp()
+    f1.tick()
+
+
+print "Turn on"
+f1.turnOn()
+
+for i in range(1,25):
+    print f1.getTemp()
+    f1.tick()
+'''
