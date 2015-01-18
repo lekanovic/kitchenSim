@@ -120,11 +120,11 @@ class Simulator:
         elif s.timeStoveHasBeenOn() > (60 * 20) and self.randEvent.shallWeTurnOff():
             s.turnOff()
 
-    def simulate(self):
+    def simulate(self, interations):
         x = ntplib.NTPClient()
         self.curTime = datetime.datetime.utcfromtimestamp(x.request('europe.pool.ntp.org').tx_time)
 
-        for i in range(0, 10000):
+        for i in range(0, interations):
             # Pick one random thermalitem
             thermalItem = self.randEvent.pickRandomItem(self.thermalItems)
             # Did the door open
@@ -137,7 +137,7 @@ class Simulator:
             self.sendToSplunk()
             self.curTime = self.curTime + datetime.timedelta(0, 1)
 
-            #time.sleep(1)
+            time.sleep(1)
 
 
 def main():
@@ -160,7 +160,7 @@ def main():
     items.append(Stove("HotWok"))
 
     s = Simulator(items, nest_login, nest_password)
-    s.simulate()
+    s.simulate(100)
     #cProfile.runctx('s.simulate()',globals(),locals())
 
 if __name__ == "__main__":
