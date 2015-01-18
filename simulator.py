@@ -126,7 +126,8 @@ class Simulator:
 
     def simulate(self, interations):
         x = ntplib.NTPClient()
-        self.curTime = datetime.datetime.utcfromtimestamp(x.request('europe.pool.ntp.org').tx_time)
+        req = x.request('europe.pool.ntp.org').tx_time
+        self.curTime = datetime.datetime.utcfromtimestamp(req)
 
         for i in range(0, interations):
             # Pick one random thermalitem
@@ -163,7 +164,7 @@ def main():
     items.append(Stove("HotWok"))
 
     s = Simulator(items, nest_login, nest_password)
-    s.simulate(86400)
+    s.simulate(100)
     #cProfile.runctx('s.simulate()',globals(),locals())
 
 if __name__ == "__main__":
