@@ -4,23 +4,19 @@ import random
 
 
 class RandomEvent:
-    # d - number of times per day where the door is left open
-    # o - number of times per day the doors is opened
-    # 86400 - number of seconds per day
-    def __init__(self, d=5, o=145):
-        self.forgett_close_door = d
-        self.times_door_opened = o
+
+    def __init__(self):
+        pass
 
     def openDoor(self):
-        rand = random.randrange(1, 86400)
-        return rand <= self.times_door_opened
+        return random.randrange(1, 50) == 1
 
     def howLong(self):
-        rand = random.randrange(1, 86400)
+        rand = random.randrange(1, 550)
         # Sometimes the door is forgotten to be closed
         # Then have it open random from 1h to 10h
-        if rand <= self.forgett_close_door:
-            return random.randrange(60 * 60, 60 * 60 * 10)
+        if rand <= 1:
+            return random.randrange(60 * 5, 60 * 10)
         else:
             return random.randrange(3, 10)
 
@@ -32,11 +28,9 @@ class RandomEvent:
         return random.randrange(v - 1, v + 2)
 
     def shallWeTurnOn(self):
-        rand = random.randrange(1, 86400)
-        return rand <= 250
+        return random.randrange(1, 250) == 1
 
     def shallWeTurnOff(self):
-        rand = random.randrange(1, 10)
-        return rand <= 2
+        return random.randrange(1, 10) == 1
 
 r = RandomEvent()
