@@ -19,7 +19,10 @@
 
 import time
 import urllib
-import urllib2
+try:
+    import urllib.request as urllib2
+except ImportError:
+    import urllib2
 import socket
 import datetime
 import sys
@@ -48,16 +51,17 @@ class Nest:
 
     def loads(self, res):
         if hasattr(json, "loads"):
-            res = json.loads(res)
+            res = json.loads(res.decode(encoding='ascii'), 'latin-1')
         else:
             res = json.read(res)
         return res
 
     def login(self):
-        data = urllib.urlencode({"username": self.username, "password": self.password})
+        data = urllib.parse.urlencode({"username": self.username, "password": self.password})
+        binary_data = data.encode("ascii")
 
         req = urllib2.Request("https://home.nest.com/user/login",
-                              data,
+                              binary_data,
                               {"user-agent":"Nest/1.1.0.10 CFNetwork/548.0.4"})
 
         res = urllib2.urlopen(req).read()
@@ -79,7 +83,7 @@ class Nest:
 
         res = self.loads(res)
 
-        self.structure_id = res["structure"].keys()[0]
+        self.structure_id = list(res["structure"].keys())[0]
 
         if (self.serial is None):
             self.device_id = res["structure"][self.structure_id]["devices"][self.index]
@@ -113,7 +117,7 @@ class Nest:
         allvars.update(device)
 
         for k in sorted(allvars.keys()):
-             print k + "."*(32-len(k)) + ":", allvars[k]
+             print(k + "."*(32-len(k)) + ":", allvars[k])
 
     def get_curtemp(self):
         return self.status["shared"][self.serial]["current_temperature"]
@@ -125,7 +129,7 @@ class Nest:
         temp = self.status["shared"][self.serial]["current_temperature"]
         temp = self.temp_out(temp)
 
-        print "%0.1f" % temp
+        print("%0.1f" % temp)
 
     def set_temperature(self, temp):
         temp = self.temp_in(temp)
@@ -139,7 +143,7 @@ class Nest:
 
         res = urllib2.urlopen(req).read()
 
-        print res
+        print(res)
 
     def set_fan(self, state):
         data = '{"fan_mode":"' + str(state) + '"}'
@@ -151,7 +155,7 @@ class Nest:
 
         res = urllib2.urlopen(req).read()
 
-        print res
+        print(res)
 
 def create_parser():
    parser = OptionParser(usage="nest [options] command [command_options] [command_args]",
@@ -176,34 +180,13 @@ def create_parser():
 
    return parser
 
-def help():
-    print "syntax: nest [options] command [command_args]"
-    print "options:"
-    print "   --user <username>      ... username on nest.com"
-    print "   --password <password>  ... password on nest.com"
-    print "   --celsius              ... use celsius (the default is farenheit)"
-    print "   --serial <number>      ... optional, specify serial number of nest to use"
-    print "   --index <number>       ... optional, 0-based index of nest"
-    print "                                (use --serial or --index, but not both)"
-    print
-    print "commands: temp, fan, show, curtemp, curhumid"
-    print "    temp <temperature>    ... set target temperature"
-    print "    fan [auto|on]         ... set fan state"
-    print "    show                  ... show everything"
-    print "    curtemp               ... print current temperature"
-    print "    curhumid              ... print current humidity"
-    print
-    print "examples:"
-    print "    nest.py --user joe@user.com --password swordfish temp 73"
-    print "    nest.py --user joe@user.com --password swordfish fan auto"
-
 
 def sendData(splunkUrl, splunkPort, data):
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((splunkUrl, splunkPort))
         client_socket.send(data)
         client_socket.close()
-        print data
+        print(data)
 
 '''
 def main():

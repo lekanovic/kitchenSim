@@ -4,12 +4,10 @@ from fridge import ThermalItem
 from fridge import Stove
 from rand import RandomEvent
 from nest import Nest
-import cProfile
-import time
+#import cProfile
 import datetime
 import ntplib
 import socket
-from time import ctime
 import sys
 
 using_fake_nest = False
@@ -27,8 +25,11 @@ class Simulator:
         self.splunkUrl = "192.168.0.10"
         self.splunkPort = 5555
 
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket.connect((self.splunkUrl, self.splunkPort))
+
         if nest_login != "":
-            using_fake_nest = False;
+            using_fake_nest = False
             u = nest_login
             p = nest_password
             self.nest = Nest(u, p, serial=None, index=0, units="C")
@@ -37,16 +38,19 @@ class Simulator:
             self.roomTemp = self.nest.get_curtemp()
         else:
             using_fake_nest = True
-            self.roomTemp = default_room_temp;
+            self.roomTemp = default_room_temp
 
         for item in items:
             item.setRoomTemp(self.roomTemp)
+
+    def __del__(self):
+        self.client_socket.close()
 
     def sendNestData(self):
         global using_fake_nest
         humid = default_room_humidity
         temp = default_room_temp
-        if using_fake_nest == False:
+        if not using_fake_nest:
             self.nest.get_status()
             humid = self.nest.get_curhumid()
             temp = self.nest.get_curtemp()
@@ -54,33 +58,29 @@ class Simulator:
         data = "{\"timestamp\":\"%s\"," % self.getTime()
         data += "\"id\":\"%s\"," % ("StoreMart")
         data += "\"temperature\":\"%s\"," % (temp)
-        data += "\"humidity\":\"%s\"}" % (humid)
+        data += "\"humidity\":\"%s\"}\r\n" % (humid)
 
         self.sendTCP(data)
 
     def getTime(self):
-        return  self.curTime.strftime("%c")
+        return  self.curTime.strftime("%Y-%m-%dT%H:%M:%S")
 
     def sendOpenDoorEvent(self, item):
         data = "{\"timestamp\":\"%s\"," % self.getTime()
         data += "\"id\":\"%s\"," % (item.getName())
-        data += "\"doorevent\":\"OPENED\"}"
+        data += "\"doorevent\":\"OPENED\"\r\n}"
         self.sendTCP(data)
 
     def sendCloseDoorEvent(self, item):
         data = "{\"timestamp\":\"%s\"," % self.getTime()
         data += "\"id\":\"%s\"," % (item.getName())
         data += "\"doorevent\":\"CLOSED\","
-        data += "\"openlength\":\"%s\"}" % (item.howLongHasdoorBeenOpen())
+        data += "\"openlength\":\"%s\"}\r\n" % (item.howLongHasdoorBeenOpen())
         self.sendTCP(data)
 
     def sendTCP(self, data):
-        print(data)
-        return
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect((self.splunkUrl, self.splunkPort))
-        client_socket.send(data)
-        client_socket.close()
+        #print data
+        self.client_socket.send(data)
 
     def sendToSplunk(self):
         # Get data from Nest and send to splunk
@@ -93,10 +93,10 @@ class Simulator:
             data += "\"temperature\":\"%s\"," % (i.getTemp())
 
             if not isinstance(i, Stove) and i.isDoorOpen():
-                data += "\"doorstatus\":\"OPENED\"}"
+                data += "\"doorstatus\":\"OPENED\"}\r\n"
                 status = True
             else:
-                data += "\"doorstatus\":\"CLOSED\"}"
+                data += "\"doorstatus\":\"CLOSED\"}\r\n"
 
             self.sendTCP(data)
 
@@ -137,8 +137,6 @@ class Simulator:
             self.sendToSplunk()
             self.curTime = self.curTime + datetime.timedelta(0, 1)
 
-            time.sleep(1)
-
 
 def main():
     nest_login = ""
@@ -157,10 +155,11 @@ def main():
     items.append(ThermalItem("Cheese", 8, hasDoor=False))
     items.append(ThermalItem("Beer", 4))
     items.append(ThermalItem("Soda", 4))
+    items.append(ThermalItem("Rotisserie", 90))
     items.append(Stove("HotWok"))
 
     s = Simulator(items, nest_login, nest_password)
-    s.simulate(100)
+    s.simulate(86400)
     #cProfile.runctx('s.simulate()',globals(),locals())
 
 if __name__ == "__main__":
