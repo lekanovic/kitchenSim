@@ -24,10 +24,19 @@ class RandomEvent:
         else:
             return random.randrange(3, 10)
 
-    def pickRandomItem(self, totalItems):
-        return random.randrange(0, totalItems)
+    def pickRandomItem(self, thermalItems):
+        index = random.randrange(0, len(thermalItems))
+        return thermalItems[index]
 
     def fluctuation(self, v):
         return random.randrange(v - 1, v + 2)
+
+    def shallWeTurnOn(self):
+        rand = random.randrange(1, 86400)
+        return rand <= 250
+
+    def shallWeTurnOff(self):
+        rand = random.randrange(1, 10)
+        return rand <= 2
 
 r = RandomEvent()

@@ -10,6 +10,10 @@ class Stove:
         self.temperature = 15
         self.k = -0.07
         self.roomTemp = roomTemp
+        self.onTime = 0
+
+    def setRoomTemp(self, temp):
+        self.rooTemp = temp
 
     def setTemp(self, temp):
         self.temperature = temp
@@ -20,8 +24,15 @@ class Stove:
     def getTemp(self):
         return self.temperature
 
+    def isTurnedOn(self):
+        return self.isOn
+
+    def timeStoveHasBeenOn(self):
+        return self.onTime
+
     def turnOn(self):
         self.isOn = True
+        self.onTime = 0
 
     def turnOff(self):
         self.isOn = False
@@ -29,6 +40,7 @@ class Stove:
     def tick(self):
         if self.isOn and self.temperature <= self.maxTemp:
             self.temperature += self.temperature * 0.16
+            self.onTime = self.onTime + 1
             if self.temperature > self.maxTemp:
                 self.temperature = self.maxTemp
         elif not self.isOn and self.temperature >= self.roomTemp:
@@ -144,4 +156,5 @@ f1.turnOn()
 for i in range(1,25):
     print f1.getTemp()
     f1.tick()
+
 '''

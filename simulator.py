@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
 from fridge import ThermalItem
+from fridge import Stove
 from rand import RandomEvent
 from nest import Nest
+import cProfile
 import time
+import datetime
 import ntplib
 import socket
 from time import ctime
@@ -16,24 +19,26 @@ class Simulator:
         self.randEvent = RandomEvent()
         self.ntpClient = ntplib.NTPClient()
 
-        self.splunkUrl = "10.97.0.104"
-        self.splunkPort = 6666
+        self.splunkUrl = "192.168.0.10"
+        self.splunkPort = 5555
 
-        u = ""
-        p = ""
-        self.nest = Nest(u, p, serial=None, index=0, units="C")
-        self.nest.login()
-        self.nest.get_status()
-        self.roomTemp = self.nest.get_curtemp()
-
+        #u = ""
+        #p = ""
+        #self.nest = Nest(u, p, serial=None, index=0, units="C")
+        #self.nest.login()
+        #self.nest.get_status()
+        #self.roomTemp = self.nest.get_curtemp()
+        self.roomTemp = 10
         for item in items:
             item.setRoomTemp(self.roomTemp)
 
     def sendNestData(self):
-        self.nest.get_status()
+        #self.nest.get_status()
 
-        humid = self.nest.get_curhumid()
-        temp = self.nest.get_curtemp()
+        #humid = self.nest.get_curhumid()
+        #temp = self.nest.get_curtemp()
+        humid = 10
+        temp = 10
 
         data = "{\"timestamp\":\"%s\"," % self.getTime()
         data += "\"id\":\"%s\"," % ("StoreMart")
@@ -43,13 +48,7 @@ class Simulator:
         self.sendTCP(data)
 
     def getTime(self):
-        while(1):
-            try:
-                ntpClient = ntplib.NTPClient()
-                response = ntpClient.request('3.us.pool.ntp.org')
-                return ctime(response.tx_time)
-            except:
-                pass
+        return  self.curTime.strftime("%c")
 
     def sendOpenDoorEvent(self, item):
         data = "{\"timestamp\":\"%s\"," % self.getTime()
@@ -81,7 +80,8 @@ class Simulator:
             data = "{\"timestamp\":\"%s\"," % self.getTime()
             data += "\"id\":\"%s\"," % (i.getName())
             data += "\"temperature\":\"%s\"," % (i.getTemp())
-            if i.isDoorOpen():
+
+            if not isinstance(i, Stove) and i.isDoorOpen():
                 data += "\"doorstatus\":\"OPENED\"}"
                 status = True
             else:
@@ -90,28 +90,41 @@ class Simulator:
             self.sendTCP(data)
 
             # If the item is doorless simulate temp fluctuation
-            if not i.hasItemDoor():
+            if not isinstance(i, Stove) and not i.hasItemDoor():
                 t = i.getInitTemp()
                 f = self.randEvent.fluctuation(t)
                 i.setTemp(f)
+
+            if isinstance(i, Stove):
+                self.simulateStove(i)
+
             i.tick()
-            if status and not i.isDoorOpen():
+            if not isinstance(i, Stove) and status and not i.isDoorOpen():
                 status = False
                 self.sendCloseDoorEvent(i)
 
+    def simulateStove(self, s):
+        if not s.isTurnedOn() and self.randEvent.shallWeTurnOn():
+            s.turnOn()
+        elif s.timeStoveHasBeenOn() > (60 * 20) and self.randEvent.shallWeTurnOff():
+            s.turnOff()
+
     def simulate(self):
-        while(1):
+        x = ntplib.NTPClient()
+        self.curTime = datetime.datetime.utcfromtimestamp(x.request('europe.pool.ntp.org').tx_time)
+
+        for i in range(0, 10000):
             # Pick one random thermalitem
-            index = self.randEvent.pickRandomItem(len(self.thermalItems))
-            thermalItem = self.thermalItems[index]
+            thermalItem = self.randEvent.pickRandomItem(self.thermalItems)
             # Did the door open
-            if self.randEvent.openDoor():
+            if not isinstance(thermalItem, Stove) and self.randEvent.openDoor():
                 howLong = self.randEvent.howLong()
                 if thermalItem.hasItemDoor():
                     self.sendOpenDoorEvent(thermalItem)
                     thermalItem.openDoor(howLong)
 
             self.sendToSplunk()
+            self.curTime = self.curTime + datetime.timedelta(0, 1)
 
             #time.sleep(1)
 
@@ -125,10 +138,11 @@ def main():
     items.append(ThermalItem("Cheese", 8, hasDoor=False))
     items.append(ThermalItem("Beer", 4))
     items.append(ThermalItem("Soda", 4))
-    items.append(ThermalItem("HotWok", 300))
+    items.append(Stove("HotWok"))
 
     s = Simulator(items)
     s.simulate()
+    #cProfile.runctx('s.simulate()',globals(),locals())
 
 if __name__ == "__main__":
     main()
