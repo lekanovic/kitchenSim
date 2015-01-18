@@ -14,6 +14,7 @@ using_fake_nest = False
 default_room_temp = 20
 default_room_humidity = 40
 
+
 class Simulator:
 
     def __init__(self, items, nest_login, nest_password):
@@ -46,6 +47,9 @@ class Simulator:
     def __del__(self):
         self.client_socket.close()
 
+    def celciusToFarenheit(self, Celsius):
+        return (9.0 / 5.0 * Celsius + 32)
+
     def sendNestData(self):
         global using_fake_nest
         humid = default_room_humidity
@@ -57,7 +61,7 @@ class Simulator:
 
         data = "{\"timestamp\":\"%s\"," % self.getTime()
         data += "\"id\":\"%s\"," % ("StoreMart")
-        data += "\"temperature\":\"%s\"," % (temp)
+        data += "\"temperature\":\"%s\"," % (self.celciusToFarenheit(temp))
         data += "\"humidity\":\"%s\"}\r\n" % (humid)
 
         self.sendTCP(data)
@@ -90,7 +94,7 @@ class Simulator:
             status = False
             data = "{\"timestamp\":\"%s\"," % self.getTime()
             data += "\"id\":\"%s\"," % (i.getName())
-            data += "\"temperature\":\"%s\"," % (i.getTemp())
+            data += "\"temperature\":\"%s\"," % (self.celciusToFarenheit(i.getTemp()))
 
             if not isinstance(i, Stove) and i.isDoorOpen():
                 data += "\"doorstatus\":\"OPENED\"}\r\n"
