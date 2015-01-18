@@ -10,11 +10,16 @@ import datetime
 import ntplib
 import socket
 from time import ctime
+import sys
 
+using_fake_nest = False
+default_room_temp = 20
+default_room_humidity = 40
 
 class Simulator:
 
-    def __init__(self, items):
+    def __init__(self, items, nest_login, nest_password):
+        global using_fake_nest
         self.thermalItems = items
         self.randEvent = RandomEvent()
         self.ntpClient = ntplib.NTPClient()
@@ -22,23 +27,29 @@ class Simulator:
         self.splunkUrl = "192.168.0.10"
         self.splunkPort = 5555
 
-        #u = ""
-        #p = ""
-        #self.nest = Nest(u, p, serial=None, index=0, units="C")
-        #self.nest.login()
-        #self.nest.get_status()
-        #self.roomTemp = self.nest.get_curtemp()
-        self.roomTemp = 10
+        if nest_login != "":
+            using_fake_nest = False;
+            u = nest_login
+            p = nest_password
+            self.nest = Nest(u, p, serial=None, index=0, units="C")
+            self.nest.login()
+            self.nest.get_status()
+            self.roomTemp = self.nest.get_curtemp()
+        else:
+            using_fake_nest = True
+            self.roomTemp = default_room_temp;
+
         for item in items:
             item.setRoomTemp(self.roomTemp)
 
     def sendNestData(self):
-        #self.nest.get_status()
-
-        #humid = self.nest.get_curhumid()
-        #temp = self.nest.get_curtemp()
-        humid = 10
-        temp = 10
+        global using_fake_nest
+        humid = default_room_humidity
+        temp = default_room_temp
+        if using_fake_nest == False:
+            self.nest.get_status()
+            humid = self.nest.get_curhumid()
+            temp = self.nest.get_curtemp()
 
         data = "{\"timestamp\":\"%s\"," % self.getTime()
         data += "\"id\":\"%s\"," % ("StoreMart")
@@ -64,7 +75,7 @@ class Simulator:
         self.sendTCP(data)
 
     def sendTCP(self, data):
-        print data
+        print(data)
         return
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((self.splunkUrl, self.splunkPort))
@@ -130,17 +141,25 @@ class Simulator:
 
 
 def main():
+    nest_login = ""
+    nest_password = ""
+
+    #Get Nest login info from commandline
+    if len(sys.argv) > 1:
+        nest_login = str(sys.argv[1])
+        nest_password = str(sys.argv[2])
+
     items = []
-    items.append(ThermalItem("IceCream", -20))
-    items.append(ThermalItem("Pizza", -30))
-    items.append(ThermalItem("Vegetables", -20))
-    items.append(ThermalItem("MilkandEggs", 4, hasDoor=False))
+    items.append(ThermalItem("Ice Cream", -20))
+    items.append(ThermalItem("Frozen Pizza", -30))
+    items.append(ThermalItem("Frozen Veg", -20))
+    items.append(ThermalItem("Milk and Eggs", 4, hasDoor=False))
     items.append(ThermalItem("Cheese", 8, hasDoor=False))
     items.append(ThermalItem("Beer", 4))
     items.append(ThermalItem("Soda", 4))
     items.append(Stove("HotWok"))
 
-    s = Simulator(items)
+    s = Simulator(items, nest_login, nest_password)
     s.simulate()
     #cProfile.runctx('s.simulate()',globals(),locals())
 
