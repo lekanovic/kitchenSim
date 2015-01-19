@@ -72,7 +72,7 @@ class Simulator:
     def sendOpenDoorEvent(self, item):
         data = "{\"timestamp\":\"%s\"," % self.getTime()
         data += "\"id\":\"%s\"," % (item.getName())
-        data += "\"doorevent\":\"OPENED\"\r\n}"
+        data += "\"doorevent\":\"OPENED\"}\r\n"
         self.sendTCP(data)
 
     def sendCloseDoorEvent(self, item):
